@@ -53,6 +53,11 @@ public class SmokeTestClients {
 
     }
 
+    @Test
+    public void testBadBehavior() {
+        new BadCli(100000).run();
+    }
+
 
     public class CliThread implements Runnable {
 
@@ -64,6 +69,11 @@ public class SmokeTestClients {
             this.numMessages = numMessages;
         }
 
+        void init() throws IOException {
+            clientSocket = new Socket("localhost", 4000);
+            outToServer = new DataOutputStream(clientSocket.getOutputStream());
+        }
+
         void shutdown() throws IOException {
             clientSocket.close();
         }
@@ -71,8 +81,7 @@ public class SmokeTestClients {
         @Override
         public void run() {
             try {
-                clientSocket = new Socket("localhost", 4000);
-                outToServer = new DataOutputStream(clientSocket.getOutputStream());
+                init();
                 for (int i=0; i++<numMessages;){
                     outToServer.write(String.format("%09d\n", new Double(Math.random() * 999999999).intValue()).getBytes());
                 }
@@ -93,6 +102,19 @@ public class SmokeTestClients {
         @Override void shutdown() throws IOException {
             outToServer.write("terminate\n".getBytes());
             super.shutdown();
+        }
+    }
+
+    public class BadCli extends CliThread {
+
+        public BadCli(int numMessages) {
+            super(numMessages);
+        }
+
+        @Override
+        public void init() throws IOException {
+            super.init();
+            outToServer.write("I am a bad client\n".getBytes());
         }
     }
 

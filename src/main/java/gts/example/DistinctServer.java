@@ -4,10 +4,10 @@ import gts.example.store.BooleanArrayStore;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -103,40 +103,41 @@ public class DistinctServer {
     /**
      * cheapo inner class to parse integers from strings and handle
      */
-    class DistinctNumberDecoder extends ChannelInboundHandlerAdapter {
+    class DistinctNumberDecoder extends SimpleChannelInboundHandler<String> {
 
         private final DistinctStore storeImpl;
         private final Writer log;
 
         public DistinctNumberDecoder(Writer log, DistinctStore storeImpl) {
+            super();
             this.storeImpl = storeImpl;
             this.log = log;
         }
 
         @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) {
-            try {
-                String line = (String) msg;
-                if (line.equals("terminate")) {
-                    ctx.channel().close();
-                    ctx.channel().parent().close();
-                } else {
-                    Integer intVal = Integer.parseInt((String) msg);
+        protected void channelRead0(ChannelHandlerContext ctx, String msg) throws Exception {
+
+            if (msg.equals("terminate")) {
+                ctx.channel().close();
+                ctx.channel().parent().close();
+            } else {
+                try {
+                    Integer intVal = Integer.parseInt(msg);
                     if (!storeImpl.getSetPresent(intVal)) {
                         log.write(String.format("%09d\n", intVal));
                         log.flush();
                     }
+                } catch (NumberFormatException | ClassCastException ex) {
+                    throw new DecoderException(ex);
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
                 }
-            } catch (NumberFormatException | ClassCastException ex) {
-                throw new DecoderException(ex);
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
             }
         }
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-            //disregard and move along, according to reqs
+            ctx.channel().disconnect().awaitUninterruptibly();
         }
     }
 
