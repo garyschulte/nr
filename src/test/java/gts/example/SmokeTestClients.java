@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @since 5/15/17.
  */
-public class TestClient {
+public class SmokeTestClients {
 
 
     @Test
@@ -30,10 +30,25 @@ public class TestClient {
     public void someThreadsAndAShutdown() throws InterruptedException {
         ExecutorService serv = Executors.newFixedThreadPool(5);
         for (int i = 0; i++<4;) {
-            serv.submit(new CliThread(200));
+            serv.submit(new CliThread(2000000000));
         }
-        serv.submit(new ShutdownCli(50));
+        serv.submit(new ShutdownCli(500));
         serv.awaitTermination(60, TimeUnit.SECONDS);
+        serv.shutdown();
+
+    }
+
+    @Test
+    public void gracefulConnectionHandling() {
+        ExecutorService serv = Executors.newFixedThreadPool(5);
+        for (int i = 0; i++<25;) {
+            serv.submit(new CliThread(50000));
+        }
+        try {
+            serv.awaitTermination(20, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         serv.shutdown();
 
     }

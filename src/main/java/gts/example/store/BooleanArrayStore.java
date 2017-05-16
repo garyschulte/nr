@@ -10,7 +10,7 @@ import org.apache.commons.lang3.tuple.Triple;
  *
  * @since 5/15/17.
  */
-public class IntArrayStore implements DistinctStore {
+public class BooleanArrayStore implements DistinctStore {
 
     private final static boolean bigArray[] = new boolean[1000000000];
     private final Object rwLock = new Object();

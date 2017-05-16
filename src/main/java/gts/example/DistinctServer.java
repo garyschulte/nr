@@ -1,6 +1,6 @@
 package gts.example;
 
-import gts.example.store.IntArrayStore;
+import gts.example.store.BooleanArrayStore;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
@@ -44,7 +44,7 @@ public class DistinctServer {
             Writer fw = new FileWriter("numbers.log", false);
 
             // store implementation
-            DistinctStore storeImpl = new IntArrayStore();
+            DistinctStore storeImpl = new BooleanArrayStore();
 
             // scheduled stats writer
             ScheduledExecutorService statsService = Executors.newScheduledThreadPool(1);
