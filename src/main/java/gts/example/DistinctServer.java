@@ -50,11 +50,11 @@ public class DistinctServer {
             ScheduledExecutorService statsService = Executors.newScheduledThreadPool(1);
             statsService.scheduleAtFixedRate(new StatsThread(storeImpl), 10, 10, SECONDS);
 
-            // shutdown hook to make life easier:
-            setupShutdownHook(fw, statsService);
-
             // run the netty server
             new DistinctServer().run(PORT, MAX_FRAME_SIZE, storeImpl, fw);
+
+            //flush log and shutdown scheduled stats
+            shutdown(fw, statsService);
 
         } catch (InterruptedException e) {
             LOG.error("error shutting down server", e);
@@ -95,20 +95,9 @@ public class DistinctServer {
         }
     }
 
-    static void setupShutdownHook(Writer fw, ExecutorService statsService) {
-        final Thread mainThread = Thread.currentThread();
-
-        //close the log and the stats writing executor upon shutdown
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            public void run() {
-                try {
-                    fw.close();
-                    statsService.shutdown();
-                } catch (IOException e) {
-                    LOG.error("unexpected IOException shutting down", e);
-                }
-            }
-        });
+    static void shutdown(Writer fw, ExecutorService statsService) throws IOException {
+        fw.close();
+        statsService.shutdown();
     }
 
     /**
@@ -127,10 +116,16 @@ public class DistinctServer {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             try {
-                Integer intVal = Integer.parseInt((String) msg);
-                if (!storeImpl.getSetPresent(intVal)) {
-                    log.write(String.format("%09d\n", intVal));
-                    log.flush();
+                String line = (String) msg;
+                if (line.equals("terminate")) {
+                    ctx.channel().close();
+                    ctx.channel().parent().close();
+                } else {
+                    Integer intVal = Integer.parseInt((String) msg);
+                    if (!storeImpl.getSetPresent(intVal)) {
+                        log.write(String.format("%09d\n", intVal));
+                        log.flush();
+                    }
                 }
             } catch (NumberFormatException | ClassCastException ex) {
                 throw new DecoderException(ex);
@@ -139,6 +134,10 @@ public class DistinctServer {
             }
         }
 
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+            //disregard and move along, according to reqs
+        }
     }
 
     /**
