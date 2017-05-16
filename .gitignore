@@ -63,3 +63,6 @@ docker/target/
 
 # local maven checkstyle cache
 .checkstyle-cachefile
+
+# output file ignore
+numbers.log
